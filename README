@@ -1,3 +1,69 @@
+armbian下vsftpd3.0.3编译安装，支持中文日志；
+
+下载源码
+wget https://security.appspot.com/downloads/vsftpd-3.0.3.tar.gz tar 
+解压源码：
+tar -zxf vsftpd-3.0.3.tar.gz
+cd vsftpd-3.0.3
+
+安装系统的一些库文件
+apt install libcap-dev libpam-dev apt-get install libpam0g-dev
+
+当前是要编译armbian系统的软件，要修改vsftpd-3.0.3目录下的vsf_findlibs.sh文件，将所有/lib 改为/lib64,/usr/lib改为/usr/lib64, 修改前先备份
+
+当前是armbian系统，修改的目标是
+
+/usr/lib/aarch64-linux-gnu/
+/lib/aarch64-linux-gnu/
+即
+/lib/替换为/lib/aarch64-linux-gnu/
+/lib64/替换为 /lib64/aarch64-linux-gnu/
+修改后文件如下，供参考 传不上来，
+
+修改nano builddefs.h，开启TCPWRAPPERS 和SSL
+
+#ifndef VSF_BUILDDEFS_H
+#define VSF_BUILDDEFS_H
+
+#define VSF_BUILD_TCPWRAPPERS
+#define VSF_BUILD_PAM
+#define VSF_BUILD_SSL
+
+#endif /* VSF_BUILDDEFS_H */
+
+修改Makefile
+
+增加链接的路径
+
+LDFLAGS =       -lcrypto -lssl -fPIE -pie -Wl,-z,relro -Wl,-z,now -L/usr/lib/aarch64-linux-gnu/ -L/lib/aarch64-linux-gnu/
+
+为支持日志输出中文，修改如下文件：
+
+进入后，用nano编辑logging.c文件找到
+
+str_replace_unprintable(p_str, ‘?’);
+
+注释掉，因为是c语言用//就可以了
+//str_replace_unprintable(p_str, ‘?’);
+
+避免出现错误：
+
+sysstr.c: In function ‘str_open’:
+sysstr.c:77:40: error: implicit conversion from ‘enum EVSFSysStrOpenMode’ to ‘enum EVSFSysUtilOpenMode’ [-Werror=enum-conversion]
+77 | enum EVSFSysUtilOpenMode open_mode = kVSFSysStrOpenUnknown;
+| ^~~~~
+cc1: all warnings being treated as errors
+
+按照VSFTP的官网说明进行修改：修改sysstr.c文件，将枚举字符串的表述更精确。
+
+Gcc-10 and later flags an error for an implicit type cast. Make it explicit:
+
+sed -e "s/kVSFSysStrOpenUnknown;/(enum EVSFSysUtilOpenMode)&/" -i sysstr.c
+
+
+编译：make
+
+
 This is vsftpd, version 3.0.3
 Author: Chris Evans
 Contact: scarybeasts@gmail.com
